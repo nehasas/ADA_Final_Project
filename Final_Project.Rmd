@@ -1,0 +1,103 @@
+---
+title: "MVC Deaths"
+output: html_notebook
+---
+```{r}
+library(foreign)
+library(MASS)
+library (ggplot2)
+library(lmtest)
+library(stargazer)
+
+str(MVC_Deaths)
+```
+```{r}
+
+#Convert variables to numeric for analysis#
+as.numeric(MVC_Deaths$HHB)
+as.numeric(MVC_Deaths$MVC)
+
+#Run a histogram to examine the distribution of data for assumptions#
+hist(MVC_Deaths$MVC)
+summary(MVC_Deaths$MVC)
+#The mean is greater than the median, indicating a Poisson distribution, further justified by the histogram.
+
+```
+
+```{r}
+#Poisson Model
+summary(m1 <- glm(MVC ~ HHB, family ="poisson", data=MVC_Deaths))
+  
+summary(m2 <- glm(MVC ~ TB, family = "poisson", data = MVC_Deaths))
+
+#When you run the Poisson model, there is statistical significance, p < 0.05, indicating there is a relationship between a handheld device/texting ban and MVC fatalities. 
+```
+```{r}
+#First model: examination of a total handheld device ban and its relationship with MVC deaths
+model1.nb <- glm.nb(MVC_Deaths$MVC ~ MVC_Deaths$HHB, data = MVC_Deaths)
+  summary(model1.nb)
+  
+#Second Model: examination of only a texting ban and its relationship with MVC deaths
+model2.nb <- glm.nb(MVC_Deaths$MVC ~ MVC_Deaths$TB, data = MVC_Deaths)
+  summary(model2.nb)
+  
+#No statistical significance noted in either model
+  #p-value of Model 1 (p = 0.529)
+  #p-value of Model 2 (p = 0.331)
+
+```
+
+```{r}
+lrtest(m1, model1.nb)
+
+lrtest(m2, model2.nb)
+
+ #This LR test demonstrates that there is a difference between the two models to a point of statistical significance. 
+```
+
+
+```{r}
+modelA.nb <- glm.nb(MVC ~ HHB + RuralB + PerBinary + LC, data = MVC_Deaths)
+  summary(modelA.nb)
+  
+modelB.nb <- glm.nb(MVC ~ TB + RuralB + PerBinary + LC, data = MVC_Deaths)
+  summary(modelB.nb)
+  
+#The multi-variable negative binomial regressions shows us that the only statistically significant variable is the workers with a long-commute (p < 0.05). 
+```
+
+```{r}
+#Does the model with additional variables make a better model? 
+
+lrtest(model1.nb, modelA.nb)
+lrtest(model2.nb, modelB.nb)
+#Indicates that the multi-variable model is better than the univariate, indicating MVC fatalities are due to multiple things. 
+```
+
+```{r}
+robust<-coeftest(modelA.nb, vcov = sandwich)
+est <- cbind(IRR = coef(modelA.nb), "2.5%"=robust[,1]-1.96*robust[,2], 
+"97.5%"=robust[,1]+1.96*robust[,2])
+exp(est)
+
+```
+```{r}
+robust2 <- coeftest(modelB.nb, vcov = sandwich)
+est2 <- cbind(IRR = coef(modelB.nb), "2.5%"=robust2[,1]-1.96*robust2[,2], "97.5%"=robust2[,1]+1.96*robust2[,2])
+exp(est2)
+```
+```{r}
+robust3 <- coeftest(model1.nb, vcov = sandwich)
+est3 <- cbind(IRR = coef(model1.nb), 
+              "2.5%" = robust3[,1]-1.96*robust3[,2],
+              "97.5%"=robust3[,1]+1.96*robust3[,2])
+exp(est3)
+```
+```{r}
+robust4<- coeftest(model2.nb, vcov = sandwich)
+est4 <- cbind(IRR = coef(model2.nb), 
+              "2.5%" = robust4[,1]-1.96*robust4[,2], 
+              "97.5%"=robust4[,1]+1.96*robust4[,2])
+exp(est4)
+```
+
